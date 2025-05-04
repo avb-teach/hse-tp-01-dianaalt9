@@ -2,43 +2,51 @@ import os
 import shutil
 import sys
 
-args = sys.argv[1:]
-if len(args) == 2:
-    input_dir, output_dir = args
-    max_depth = None
-elif len(args) == 4 and args[2] == "--max_depth":
-    input_dir, output_dir = args[0], args[1]
+input_dir, output_dir = "", ""
+max_depth = None
+
+if len(sys.argv) == 3:
+    _, input_dir, output_dir = sys.argv
+elif len(sys.argv) == 5 and sys.argv[3] == "--max_depth":
+    _, input_dir, output_dir, _, max_depth = sys.argv
     try:
-        max_depth = int(args[3])
+        max_depth = int(sys.argv[4])
     except ValueError:
-        sys.exit("Ошибка: max_depth должно быть числом.")
+        sys.exit(1)
 else:
-    sys.exit("Использование: script.py <input_dir> <output_dir> [--max_depth N]")
+    sys.exit(1)
 
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+os.makedirs(output_dir, exist_ok=True)
 
-def generate_unique_filename(folder, original_name):
-    name, extension = os.path.splitext(original_name)
+def get_tail(parts, n):
+    if n > 1:
+        return os.path.join(*parts[(1-n):])
+    else:
+        return os.path.basename(parts[-1])
+
+def get_path(f):
+    rel_path = os.path.relpath(f, input_dir)
+    parts = rel_path.split(os.sep)
+    if max_depth is None or len(parts) <= max_depth:
+        return rel_path
+    else:
+        return get_tail(parts, max_depth)
+
+def get_unique(dst_path):
+    base, ext = os.path.splitext(dst_path)
     counter = 1
-    new_name = original_name
-    while os.path.exists(os.path.join(folder, new_name)):
-        new_name = f"{name}{counter}{extension}"
+    new_path = dst_path
+    while os.path.exists(new_path):
+        new_path = f"{base}_{counter}{ext}"
         counter += 1
-    return os.path.join(folder, new_name)
+    return new_path
 
-def get_folder_depth(base, current):
-    relative_path = os.path.relpath(current, base)
-    return 0 if relative_path == '.' else relative_path.count(os.sep) + 1
-
-for current_dir, subdirs, filenames in os.walk(input_dir):
-    current_depth = get_folder_depth(input_dir, current_dir)
-    if max_depth is not None and current_depth > max_depth:
-        subdirs[:] = []
-        continue
-
-    for file in filenames:
-        source_path = os.path.join(current_dir, file)
-        destination_path = generate_unique_filename(output_dir, file)
-        shutil.copy2(source_path, destination_path)
+for root, _, files in os.walk(input_dir):
+    for file in files:
+        abs_path = os.path.join(root, file)
+        rel_path = get_path(abs_path)
+        dst_path = os.path.join(output_dir, rel_path)
+        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+        final_path = get_unique(dst_path)
+        shutil.copy2(abs_path, final_path)
 
