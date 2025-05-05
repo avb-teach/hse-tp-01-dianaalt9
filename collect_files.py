@@ -7,6 +7,7 @@ max_depth = None
 
 if len(sys.argv) == 3:
     _, input_dir, output_dir = sys.argv
+    max_depth = 1
 elif len(sys.argv) == 5 and sys.argv[3] == "--max_depth":
     _, input_dir, output_dir, _, max_depth = sys.argv
     try:
@@ -20,7 +21,7 @@ os.makedirs(output_dir, exist_ok=True)
 
 def get_tail(parts, n):
     if n > 1:
-        return os.path.join(*parts[(1-n):])
+        return os.path.join(*parts[len(parts) - n:])
     else:
         return os.path.basename(parts[-1])
 
@@ -49,4 +50,3 @@ for root, _, files in os.walk(input_dir):
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
         final_path = get_unique(dst_path)
         shutil.copy2(abs_path, final_path)
-
